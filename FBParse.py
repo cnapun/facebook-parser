@@ -1,6 +1,5 @@
-from lxml import etree
-import pandas as pd
 import datetime
+from lxml import etree
 
 
 def _date_range(min_day, max_day):  # max day is inclusive
@@ -44,7 +43,7 @@ class Parser:
             key = tuple(sorted(thread.text.split(',')))
 
             thread_dict[key]['messages'].extend(ds)
-        for k in thread_dict.keys():
+        for key in thread_dict.keys():
             thread_dict[key]['messages'].sort(key=lambda x: x['datetime'])
         self.thread_dict = thread_dict
 
