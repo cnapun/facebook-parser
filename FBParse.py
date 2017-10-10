@@ -2,6 +2,12 @@ from lxml import etree
 import pandas as pd
 import datetime
 
+def _date_range(min_day, max_day): # max day is inclusive
+    out = []
+    while min_day <= max_day:
+        out.append(min_day)
+        min_day += datetime.timedelta(days=1)
+    return out
 class Parser:
     def __init__(self, filename):
         self.filename = filename
@@ -74,3 +80,16 @@ class Parser:
         if not ended:
             streaks.append(counter)
         return max(streaks), streaks
+
+    def day_counts(self, person):
+        if isinstance(person, str):
+            person = tuple(sorted(person.split(',')))
+        messages = self.thread_dict[person]['messages']
+        by_day_dict = {d:0 for d in _date_range(messages[0]['datetime'].date(), messages[-1]['datetime'].date())}
+        for message in messages:
+            by_day_dict[message['datetime'].date()] += 1
+        return sorted(by_day_dict.items())
+    def names_times(self, person):
+        if isinstance(person, str):
+            person = tuple(sorted(person.split(',')))
+        return [(m['name'], m['datetime']) for m in self.thread_dict[person]['messages']]
