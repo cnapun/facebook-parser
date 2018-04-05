@@ -26,7 +26,7 @@ class Parser:
         files = []
         for fname in os.listdir(base_path):
             if re.match(r"[0-9]+.html", fname):
-                files.append(base_path + fname)
+                files.append(os.path.join(base_path, fname))
         all_convos = {}
         for fn in files:
             tree = etree.parse(fn, etree.HTMLParser())
@@ -66,11 +66,13 @@ class Parser:
                 all_convos[participants] = new_df
             else:
                 all_convos[participants] = all_convos[participants].append(new_df).reset_index(drop=True)
+        for k, v in all_convos.items():
+            all_convos[k] = v[::-1].sort_values('time', kind='mergesort').reset_index(drop=True)
         self.convos = all_convos
 
     def _convert_key(self, name_or_key):
         if isinstance(name_or_key, str):
-            key = tuple(sorted(filter(lambda x: x, name_or_key.split(','))))
+            key = tuple(sorted(filter(lambda x: x, map(str.strip, name_or_key.split(',')))))
         elif hasattr(name_or_key, '__iter__') or isinstance(name_or_key, collections.Iterable):
             key = tuple(sorted(name_or_key))
         else:
@@ -109,8 +111,8 @@ class Parser:
         :return: np.array of lengths of streaks
         """
         key = self._convert_key(name_or_key)
-        t = self.convos[key][::-1].sort_values('time', kind='mergesort').reset_index(drop=True)
-        uqs, uinv = np.unique((t.time.dt.date - t.time.dt.date[0]) / np.timedelta64(1, 'D'), return_inverse=True)
+        t = self.convos[key]
+        uqs, uinv = np.unique((t.time.dt.date - t.time.dt.date.iloc[0]) / np.timedelta64(1, 'D'), return_inverse=True)
         wheres, inv, streaks = np.unique(uqs - np.arange(uqs.size), return_counts=True, return_inverse=True)
         if return_inv:
             return streaks, inv[uinv]
@@ -120,7 +122,7 @@ class Parser:
     def day_counts(self, name_or_key):
         key = self._convert_key(name_or_key)
         dates = self.convos[key]['time'].dt.date
-        by_day_dict = {d: 0 for d in _date_range(dates[0], dates[-1])}
+        by_day_dict = {d: 0 for d in _date_range(dates.iloc[0], dates.iloc[-1])}
         for date in dates:
             by_day_dict[date] += 1
         return sorted(by_day_dict.items())
@@ -130,3 +132,6 @@ class Parser:
         dts = self.convos[key]['time'].dt
         times = dts.hour * 60 + dts.minute
         return np.histogram(times, np.arange(1440))
+
+    def __getitem__(self, items):
+        return self.convos[self._convert_key(items)]
